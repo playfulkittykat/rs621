@@ -1,5 +1,5 @@
 #[cfg(feature = "rate-limit")]
-mod rate_limit;
+use rs621_ratelimit as rate_limit;
 
 #[cfg(not(feature = "rate-limit"))]
 #[path = "client/dummy_rate_limit.rs"]
@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use {
     super::error::{Error, Result},
-    reqwest::header::{HeaderMap, HeaderValue},
+    reqwest::header::HeaderMap,
 };
 
 #[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
@@ -29,7 +29,7 @@ fn create_header_map<T: AsRef<[u8]>>(user_agent: T) -> Result<HeaderMap> {
         let mut headers = HeaderMap::new();
         headers.insert(
             reqwest::header::USER_AGENT,
-            HeaderValue::from_bytes(user_agent.as_ref())
+            reqwest::header::HeaderValue::from_bytes(user_agent.as_ref())
                 .map_err(|e| Error::InvalidHeaderValue(format!("{}", e)))?,
         );
 
