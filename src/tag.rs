@@ -433,6 +433,7 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mockito::mock;
 
     #[test]
     fn build_query() {
@@ -467,5 +468,256 @@ mod tests {
                 has_artist: true,
             }
         );
+    }
+
+    #[tokio::test]
+    async fn tags_paginated_ordered_by_count() {
+        let client = Client::new(&mockito::server_url(), b"rs621/unit_test").unwrap();
+
+        let query = Query::new().order(Order::Count).per_page(1);
+
+        let _page1 = mock("GET", "/tags.json?limit=1&search%5Border%5D=count")
+            .with_body(include_str!("mocked/tags_order-count_limit-1_page-1.json"))
+            .create();
+        let _page2 = mock("GET", "/tags.json?limit=1&page=2&search%5Border%5D=count")
+            .with_body(include_str!("mocked/tags_order-count_limit-1_page-2.json"))
+            .create();
+        let _page3 = mock("GET", "/tags.json?limit=1&page=3&search%5Border%5D=count")
+            .with_body(include_str!("mocked/tags_empty.json"))
+            .create();
+
+        let expected = vec![
+            Ok(Tag {
+                id: 12054,
+                name: "mammal".into(),
+                post_count: 3350829,
+                related_tags: concat!(
+                    "mammal 300 anthro 224 hi_res 212 female 185 male 162 solo 147 ",
+                    "genitals 146 fur 137 hair 130 breasts 125 clothing 122 duo 111 ",
+                    "canid 109 canine 107 penis 101 nipples 99 bodily_fluids 98 ",
+                    "digital_media_(artwork) 89 simple_background 87 nude 84 tail 77 ",
+                    "text 77 absurd_res 73 genital_fluids 72 blush 70"
+                )
+                .into(),
+                related_tags_updated_at: "2024-10-12T17:22:13.554-04:00".parse().ok(),
+                category: Category::Species,
+                is_locked: false,
+                created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+                updated_at: "2024-10-12T17:22:13.554-04:00".parse().unwrap(),
+            }),
+            Ok(Tag {
+                id: 7115,
+                name: "anthro".into(),
+                post_count: 3288365,
+                related_tags: concat!(
+                    "anthro 300 mammal 236 hi_res 211 male 189 solo 165 female 162 ",
+                    "clothing 159 genitals 152 breasts 130 fur 118 hair 114 penis 112 ",
+                    "duo 107 bodily_fluids 105 nipples 104 tail 100 simple_background 98 ",
+                    "clothed 91 nude 90 canid 89 canine 88 digital_media_(artwork) 87 ",
+                    "genital_fluids 82 balls 79 butt 77"
+                )
+                .into(),
+                related_tags_updated_at: "2024-10-11T10:06:56.303-04:00".parse().ok(),
+                category: Category::General,
+                is_locked: false,
+                created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+                updated_at: "2024-10-11T10:06:56.303-04:00".parse().unwrap(),
+            }),
+        ];
+
+        let actual = client.tag_search(query).collect::<Vec<_>>().await;
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn tags_paginated_before() {
+        let client = Client::new(&mockito::server_url(), b"rs621/unit_test").unwrap();
+
+        let query = Query::new().per_page(2).page(Cursor::Before(12054));
+
+        let _page1 = mock("GET", "/tags.json?limit=2&page=b12054")
+            .with_body(include_str!("mocked/tags_limit-2_page-b12054.json"))
+            .create();
+        let _page2 = mock("GET", "/tags.json?limit=2&page=b12052")
+            .with_body(include_str!("mocked/tags_limit-2_page-b12052.json"))
+            .create();
+        let _page3 = mock("GET", "/tags.json?limit=2&page=b12048")
+            .with_body(include_str!("mocked/tags_empty.json"))
+            .create();
+
+        let expected = vec![
+            Ok(Tag {
+                id: 12053,
+                name: "sefeiren".into(),
+                post_count: 1581,
+                related_tags: concat!(
+                    "conditional_dnp 300 sefeiren 300 female 222 male 211 claws 176 ",
+                    "anthro 173 genitals 165 mammal 165 paws 161 hindpaw 151 hi_res 150 ",
+                    "feral 149 fur 142 tongue 142 nude 131 duo 122 open_mouth 122 ",
+                    "scalie 117 bodily_fluids 116 frisky_ferals 113 horn 112 solo 112 ",
+                    "penis 108 text 104 blush 101",
+                )
+                .into(),
+                related_tags_updated_at: "2022-04-06T06:21:26.712-04:00".parse().ok(),
+                category: Category::Artist,
+                is_locked: false,
+                created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+                updated_at: "2022-04-06T06:21:26.713-04:00".parse().unwrap(),
+            }),
+            Ok(Tag {
+                id: 12052,
+                name: "skee".into(),
+                post_count: 2,
+                related_tags: concat!(
+                    "male 2 solo 2 skee 2 simple_background 2 shorts 1 bulge 1 ",
+                    "clothing 1 genital_outline 1 genitals 1 hi_res 1 huge_balls 1 ",
+                    "huge_penis 1 hyper 1 hyper_balls 1 hyper_genitalia 1 ",
+                    "hyper_penis 1 limitedvision 1 lizard 1 anthro 1 multi_genitalia 1 ",
+                    "multi_penis 1 penis 1 penis_outline 1 reptile 1 scalie 1",
+                )
+                .into(),
+                related_tags_updated_at: "2020-02-24T21:51:39.390-05:00".parse().ok(),
+                category: Category::Artist,
+                is_locked: false,
+                created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+                updated_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+            }),
+            Ok(Tag {
+                id: 12051,
+                name: "kash".into(),
+                post_count: 5,
+                related_tags: concat!(
+                    "lagomorph 5 mammal 5 kash 5 male 5 leporid 4 rabbit 4 anthro 4 ",
+                    "solo 4 balls 3 long_ears 3 nude 3 penis 3 hair 3 purple_hair 2 ",
+                    "erection 2 blue_countershading 2 genitals 2 fur 2 butt 2 biped 2 ",
+                    "backsack 2 blue_markings 2 countershading 2 markings 2 challen 2",
+                )
+                .into(),
+                related_tags_updated_at: "2020-03-04T21:55:37.812-05:00".parse().ok(),
+                category: Category::Character,
+                is_locked: false,
+                created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+                updated_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+            }),
+            Ok(Tag {
+                id: 12048,
+                name: "fish_bowl".into(),
+                post_count: 147,
+                related_tags: concat!(
+                    "aquarium 108 fish_bowl 108 vivarium 108 mammal 76 marine 71 ",
+                    "fish 69 hi_res 56 clothing 50 feral 49 male 49 female 48 ",
+                    "water 48 fur 47 text 44 hair 42 ambiguous_gender 40 anthro 40 ",
+                    "group 38 english_text 36 smile 36 simple_background 35 ",
+                    "felid 34 open_mouth 34 solo 34 clothed 32",
+                )
+                .into(),
+                related_tags_updated_at: "2021-12-11T15:59:15.118-05:00".parse().ok(),
+                category: Category::General,
+                is_locked: false,
+                created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+                updated_at: "2021-12-11T15:59:15.118-05:00".parse().unwrap(),
+            }),
+        ];
+
+        let actual = client.tag_search(query).collect::<Vec<_>>().await;
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn tags_paginated_after() {
+        let client = Client::new(&mockito::server_url(), b"rs621/unit_test").unwrap();
+
+        let query = Query::new().per_page(2).page(Cursor::After(12047));
+
+        let _page1 = mock("GET", "/tags.json?limit=2&page=a12047")
+            .with_body(include_str!("mocked/tags_limit-2_page-a12047.json"))
+            .create();
+        let _page2 = mock("GET", "/tags.json?limit=2&page=a12051")
+            .with_body(include_str!("mocked/tags_limit-2_page-a12051.json"))
+            .create();
+        let _page3 = mock("GET", "/tags.json?limit=2&page=a12053")
+            .with_body(include_str!("mocked/tags_empty.json"))
+            .create();
+
+        // Even with `page=a...`, each page is returned in descending order.
+        let expected = vec![
+            Ok(Tag {
+                id: 12051,
+                name: "kash".into(),
+                post_count: 5,
+                related_tags: concat!(
+                    "lagomorph 5 mammal 5 kash 5 male 5 leporid 4 rabbit 4 anthro 4 ",
+                    "solo 4 balls 3 long_ears 3 nude 3 penis 3 hair 3 purple_hair 2 ",
+                    "erection 2 blue_countershading 2 genitals 2 fur 2 butt 2 biped 2 ",
+                    "backsack 2 blue_markings 2 countershading 2 markings 2 challen 2",
+                )
+                .into(),
+                related_tags_updated_at: "2020-03-04T21:55:37.812-05:00".parse().ok(),
+                category: Category::Character,
+                is_locked: false,
+                created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+                updated_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+            }),
+            Ok(Tag {
+                id: 12048,
+                name: "fish_bowl".into(),
+                post_count: 147,
+                related_tags: concat!(
+                    "aquarium 108 fish_bowl 108 vivarium 108 mammal 76 marine 71 ",
+                    "fish 69 hi_res 56 clothing 50 feral 49 male 49 female 48 ",
+                    "water 48 fur 47 text 44 hair 42 ambiguous_gender 40 anthro 40 ",
+                    "group 38 english_text 36 smile 36 simple_background 35 ",
+                    "felid 34 open_mouth 34 solo 34 clothed 32",
+                )
+                .into(),
+                related_tags_updated_at: "2021-12-11T15:59:15.118-05:00".parse().ok(),
+                category: Category::General,
+                is_locked: false,
+                created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+                updated_at: "2021-12-11T15:59:15.118-05:00".parse().unwrap(),
+            }),
+            Ok(Tag {
+                id: 12053,
+                name: "sefeiren".into(),
+                post_count: 1581,
+                related_tags: concat!(
+                    "conditional_dnp 300 sefeiren 300 female 222 male 211 claws 176 ",
+                    "anthro 173 genitals 165 mammal 165 paws 161 hindpaw 151 hi_res 150 ",
+                    "feral 149 fur 142 tongue 142 nude 131 duo 122 open_mouth 122 ",
+                    "scalie 117 bodily_fluids 116 frisky_ferals 113 horn 112 solo 112 ",
+                    "penis 108 text 104 blush 101",
+                )
+                .into(),
+                related_tags_updated_at: "2022-04-06T06:21:26.712-04:00".parse().ok(),
+                category: Category::Artist,
+                is_locked: false,
+                created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+                updated_at: "2022-04-06T06:21:26.713-04:00".parse().unwrap(),
+            }),
+            Ok(Tag {
+                id: 12052,
+                name: "skee".into(),
+                post_count: 2,
+                related_tags: concat!(
+                    "male 2 solo 2 skee 2 simple_background 2 shorts 1 bulge 1 ",
+                    "clothing 1 genital_outline 1 genitals 1 hi_res 1 huge_balls 1 ",
+                    "huge_penis 1 hyper 1 hyper_balls 1 hyper_genitalia 1 ",
+                    "hyper_penis 1 limitedvision 1 lizard 1 anthro 1 multi_genitalia 1 ",
+                    "multi_penis 1 penis 1 penis_outline 1 reptile 1 scalie 1",
+                )
+                .into(),
+                related_tags_updated_at: "2020-02-24T21:51:39.390-05:00".parse().ok(),
+                category: Category::Artist,
+                is_locked: false,
+                created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+                updated_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
+            }),
+        ];
+
+        let actual = client.tag_search(query).collect::<Vec<_>>().await;
+
+        assert_eq!(actual, expected);
     }
 }
