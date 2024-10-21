@@ -1,0 +1,17 @@
+[package]
+name = "rs621-ratelimit"
+edition = "2021"
+description = "Request rate limiting library for rs621."
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme.workspace = true
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+gloo-timers = { version = "0.3", features = ["futures"] }
+futures = { workspace = true, features = ["std", "alloc"] }
+web-time = "1.1.0"
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+tokio = { version = "1", features = ["time", "sync"] }
