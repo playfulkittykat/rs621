@@ -316,7 +316,7 @@ impl Client {
     /// }
     /// # Ok(()) }
     /// ```
-    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    #[cfg(not(target_family = "wasm"))]
     pub fn tag_search(
         &self,
         query: Query,

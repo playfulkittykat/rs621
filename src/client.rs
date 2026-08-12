@@ -225,11 +225,7 @@ impl Client {
     where
         T: serde::Serialize,
     {
-        self.post_response(endpoint, body)
-            .await?
-            .json()
-            .await
-            .map_err(|e| Error::Serial(format!("{}", e)))
+        Ok(self.post_response(endpoint, body).await?.json().await?)
     }
 
     pub(crate) async fn delete(&self, endpoint: &str) -> Result<()> {
@@ -266,9 +262,7 @@ impl Client {
             .map_err(|x| Error::CannotSendRequest(x.to_string()))?;
 
         if res.status().is_success() {
-            res.json()
-                .await
-                .map_err(|e| Error::Serial(format!("{}", e)))
+            Ok(res.json().await?)
         } else {
             Err(Error::Http {
                 url,
@@ -296,9 +290,7 @@ impl Client {
                 .map_err(|e| Error::CannotSendRequest(format!("{}", e)))?;
 
             if res.status().is_success() {
-                res.json()
-                    .await
-                    .map_err(|e| Error::Serial(format!("{}", e)))
+                Ok(res.json().await?)
             } else {
                 Err(Error::Http {
                     url: url?,
@@ -329,15 +321,21 @@ mod tests {
             .create();
 
         let server_url = Url::parse(&mockito::server_url()).unwrap();
-
-        assert_eq!(
-            client.get_json_endpoint("/post/show.json?id=8595").await,
-            Err(crate::error::Error::Http {
-                url: server_url.join("/post/show.json?id=8595").unwrap(),
+        let err = client
+            .get_json_endpoint("/post/show.json?id=8595")
+            .await
+            .unwrap_err();
+        match err {
+            crate::error::Error::Http {
+                url,
                 code: 500,
-                reason: Some(String::from("foo"))
-            })
-        );
+                reason,
+            } => {
+                assert_eq!(url, server_url.join("/post/show.json?id=8595").unwrap());
+                assert_eq!(reason, Some(String::from("foo")));
+            }
+            _ => panic!("expected Http error"),
+        }
     }
 
     #[tokio::test]
@@ -349,12 +347,42 @@ mod tests {
             .create();
 
         assert_eq!(
-            client.get_json_endpoint("/post/show.json?id=8595").await,
-            Ok({
+            client
+                .get_json_endpoint("/post/show.json?id=8595")
+                .await
+                .unwrap()
+                .as_object()
+                .unwrap(),
+            &{
                 let mut m = serde_json::Map::new();
                 m.insert(String::from("dummy"), "json".into());
-                m.into()
-            })
+                m
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn get_json_endpoint_query_success() {
+        #[derive(Serialize)]
+        struct Query {
+            id: u64,
+        }
+
+        let client = Client::new(&mockito::server_url(), b"rs621/unit_test").unwrap();
+
+        let _m = mock("GET", "/post/show.json?id=8595")
+            .with_body(r#"{"dummy":"json"}"#)
+            .create();
+
+        let query = Query { id: 8595 };
+        assert_eq!(
+            client
+                .get_json_endpoint_query::<_, serde_json::Value>("/post/show.json", &query)
+                .await
+                .unwrap(),
+            serde_json::json!({
+                "dummy": "json",
+            }),
         );
     }
 
