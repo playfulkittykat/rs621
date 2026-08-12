@@ -345,10 +345,7 @@ impl Client {
     /// # Ok(()) }
     /// ```
     #[cfg(not(target_family = "wasm"))]
-    pub fn tag_search(
-        &self,
-        query: Query,
-    ) -> impl Stream<Item = Rs621Result<Tag>> + '_ + Send + Sync {
+    pub fn tag_search(&self, query: Query) -> impl Stream<Item = Rs621Result<Tag>> + '_ + Send {
         // TODO: There should be a way to use `try_unfold` here instead.
         unfold(Some(query), move |query| self.tag_search_page(query))
             .map(futures::stream::iter)
@@ -436,6 +433,7 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures::TryStreamExt;
     use mockito::mock;
 
     #[test]
@@ -490,7 +488,7 @@ mod tests {
             .create();
 
         let expected = vec![
-            Ok(Tag {
+            Tag {
                 id: 12054,
                 name: "mammal".into(),
                 post_count: 3350829,
@@ -507,8 +505,8 @@ mod tests {
                 is_locked: false,
                 created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
                 updated_at: "2024-10-12T17:22:13.554-04:00".parse().unwrap(),
-            }),
-            Ok(Tag {
+            },
+            Tag {
                 id: 7115,
                 name: "anthro".into(),
                 post_count: 3288365,
@@ -525,10 +523,10 @@ mod tests {
                 is_locked: false,
                 created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
                 updated_at: "2024-10-11T10:06:56.303-04:00".parse().unwrap(),
-            }),
+            },
         ];
 
-        let actual = client.tag_search(query).collect::<Vec<_>>().await;
+        let actual: Vec<_> = client.tag_search(query).try_collect().await.unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -550,7 +548,7 @@ mod tests {
             .create();
 
         let expected = vec![
-            Ok(Tag {
+            Tag {
                 id: 12053,
                 name: "sefeiren".into(),
                 post_count: 1581,
@@ -567,8 +565,8 @@ mod tests {
                 is_locked: false,
                 created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
                 updated_at: "2022-04-06T06:21:26.713-04:00".parse().unwrap(),
-            }),
-            Ok(Tag {
+            },
+            Tag {
                 id: 12052,
                 name: "skee".into(),
                 post_count: 2,
@@ -585,8 +583,8 @@ mod tests {
                 is_locked: false,
                 created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
                 updated_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
-            }),
-            Ok(Tag {
+            },
+            Tag {
                 id: 12051,
                 name: "kash".into(),
                 post_count: 5,
@@ -602,8 +600,8 @@ mod tests {
                 is_locked: false,
                 created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
                 updated_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
-            }),
-            Ok(Tag {
+            },
+            Tag {
                 id: 12048,
                 name: "fish_bowl".into(),
                 post_count: 147,
@@ -620,10 +618,10 @@ mod tests {
                 is_locked: false,
                 created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
                 updated_at: "2021-12-11T15:59:15.118-05:00".parse().unwrap(),
-            }),
+            },
         ];
 
-        let actual = client.tag_search(query).collect::<Vec<_>>().await;
+        let actual: Vec<_> = client.tag_search(query).try_collect().await.unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -646,7 +644,7 @@ mod tests {
 
         // Even with `page=a...`, each page is returned in descending order.
         let expected = vec![
-            Ok(Tag {
+            Tag {
                 id: 12051,
                 name: "kash".into(),
                 post_count: 5,
@@ -662,8 +660,8 @@ mod tests {
                 is_locked: false,
                 created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
                 updated_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
-            }),
-            Ok(Tag {
+            },
+            Tag {
                 id: 12048,
                 name: "fish_bowl".into(),
                 post_count: 147,
@@ -680,8 +678,8 @@ mod tests {
                 is_locked: false,
                 created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
                 updated_at: "2021-12-11T15:59:15.118-05:00".parse().unwrap(),
-            }),
-            Ok(Tag {
+            },
+            Tag {
                 id: 12053,
                 name: "sefeiren".into(),
                 post_count: 1581,
@@ -698,8 +696,8 @@ mod tests {
                 is_locked: false,
                 created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
                 updated_at: "2022-04-06T06:21:26.713-04:00".parse().unwrap(),
-            }),
-            Ok(Tag {
+            },
+            Tag {
                 id: 12052,
                 name: "skee".into(),
                 post_count: 2,
@@ -716,10 +714,10 @@ mod tests {
                 is_locked: false,
                 created_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
                 updated_at: "2020-03-05T05:49:37.994-05:00".parse().unwrap(),
-            }),
+            },
         ];
 
-        let actual = client.tag_search(query).collect::<Vec<_>>().await;
+        let actual: Vec<_> = client.tag_search(query).try_collect().await.unwrap();
 
         assert_eq!(actual, expected);
     }
