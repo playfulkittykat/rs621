@@ -204,6 +204,13 @@ pub struct Post {
     pub is_favorited: bool,
 }
 
+#[derive(Debug, PartialEq, Eq, Deserialize, Clone)]
+#[non_exhaustive]
+pub struct PostFavorite {
+    pub post_id: u64,
+    pub favorite_count: u64,
+}
+
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 struct PostListApiResponse {
     pub posts: Vec<Post>,
@@ -613,26 +620,21 @@ impl Client {
     /// # async fn main() -> rs621::error::Result<()> {
     /// let client = Client::new("https://e926.net", "MyProject/1.0 (by username on e621)")?;
     ///
-    /// let post = client.post_favorite(1234).await?;
-    /// assert_eq!(post.id, 1234);
+    /// let response = client.post_favorite(1234).await?;
+    /// assert_eq!(response.post_id, 1234);
     /// # Ok(()) }
     /// ```
-    pub async fn post_favorite(&self, id: u64) -> Result<Post, Error> {
+    pub async fn post_favorite(&self, id: u64) -> Result<PostFavorite, Error> {
         #[derive(Serialize)]
         struct Form {
             post_id: u64,
-        }
-
-        #[derive(Deserialize)]
-        struct Response {
-            post: Post,
         }
 
         let response = self
             .post_form("/favorites.json", &Form { post_id: id })
             .await?;
 
-        Ok(serde_json::from_value::<Response>(response)?.post)
+        Ok(serde_json::from_value(response)?)
     }
 
     /// Mark a [`Post`] (identified by `id`) as no longer particularly liked.
@@ -748,19 +750,10 @@ mod tests {
         .with_body(include_str!("mocked/favorite.json"))
         .create();
 
-        let expected =
-            serde_json::from_str::<serde_json::Value>(include_str!("mocked/favorite.json"))
-                .unwrap()
-                .as_object()
-                .unwrap()
-                .get("post")
-                .cloned()
-                .unwrap();
+        let expected: PostFavorite =
+            serde_json::from_str(include_str!("mocked/favorite.json")).unwrap();
 
-        assert_eq!(
-            client.post_favorite(3758515).await.unwrap(),
-            serde_json::from_value(expected).unwrap(),
-        );
+        assert_eq!(client.post_favorite(3758515).await.unwrap(), expected,);
     }
 
     #[tokio::test]
